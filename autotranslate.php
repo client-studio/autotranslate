@@ -183,6 +183,7 @@ class ACF_Classic_AI_Translator {
 		var totalProcessed = 0;
 		setStatus('Starting translation...', true);
 		log('Starting batch translation...');
+		log('⏱️  This can take a while. Grab a coffee and DO NOT close this browser window!');
 		log('');
 		function runOnce(){
 			if(!running) return;
@@ -367,12 +368,13 @@ JS;
 
 		if (!$q->have_posts()) return [["No posts found for this page."], false, 0];
 
-		$regex = $this->coerce_regex($p['fields_regex']);
-		$count = 0;
-		foreach ($q->posts as $post_id) {
-			$post = get_post($post_id);
-			$logs[] = "#{$post_id} — {$post->post_type} — {$post->post_title}";
-			$count++;
+	$regex = $this->coerce_regex($p['fields_regex']);
+	$count = 0;
+	$total = count($q->posts);
+	foreach ($q->posts as $post_id) {
+		$post = get_post($post_id);
+		$count++;
+		$logs[] = "[{$count}/{$total}] #{$post_id} — {$post->post_type} — {$post->post_title}";
 
 			// 1) Post title
 			$logs = array_merge($logs, $this->translate_post_title($post, $p['to'], $p['from'], $model, $key, $p['simulate'], $p['overwrite']));
