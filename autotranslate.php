@@ -405,6 +405,12 @@ JS;
 		$title = $post->post_title;
 		if (!is_string($title) || trim($title) === '') return $logs;
 		
+		if ($simulate) { 
+			$logs[] = "  • Would translate post_title: \"{$title}\" → {$to}"; 
+			$logs[] = "  • Would update slug from: \"{$post->post_name}\""; 
+			return $logs; 
+		}
+		
 		$result = $this->ask_openai($title, $to, $from, false, $model, $key);
 		$translated = $result['content'] ?? '';
 		$error = $result['error'] ?? null;
@@ -419,13 +425,6 @@ JS;
 		if (!is_string($translated) || trim($translated) === '') {
 			$logs[] = "  • ⚠️ Skipped post_title - translation returned empty (original: {$title})";
 			return $logs;
-		}
-		
-		if ($simulate) { 
-			$new_slug = sanitize_title($translated);
-			$logs[] = "  • Would translate post_title: \"{$title}\" → \"{$translated}\""; 
-			$logs[] = "  • Would update slug: \"{$post->post_name}\" → \"{$new_slug}\""; 
-			return $logs; 
 		}
 		
 		if ($overwrite) {
@@ -490,6 +489,11 @@ JS;
 			
 			$field_label = strpos($meta_key, 'title') !== false ? 'SEO Title' : 'SEO Description';
 			
+			if ($simulate) {
+				$logs[] = "  • Would translate {$field_label}: \"{$value}\" → {$to}";
+				continue;
+			}
+			
 			$result = $this->ask_openai($value, $to, $from, false, $model, $key);
 			$translated = $result['content'] ?? '';
 			$error = $result['error'] ?? null;
@@ -504,9 +508,7 @@ JS;
 				continue;
 			}
 			
-			if ($simulate) {
-				$logs[] = "  • Would translate {$field_label}: \"{$value}\" → \"{$translated}\"";
-			} else if ($overwrite) {
+			if ($overwrite) {
 				update_post_meta($post_id, $meta_key, $translated);
 				$logs[] = "  • Updated {$field_label}: \"{$translated}\"";
 			}
@@ -521,6 +523,8 @@ JS;
 		if (!is_string($content) || trim($content) === '') return $logs;
 		$meta_key = '_translated_content_' . $to;
 		if (!$overwrite && get_post_meta($post->ID, $meta_key, true)) { $logs[] = "  • Content already translated ($meta_key)."; return $logs; }
+		
+		if ($simulate) { $logs[] = "  • Would translate post_content → {$to} (len " . strlen($content) . ")"; return $logs; }
 		
 		$result = $this->ask_openai($content, $to, $from, true, $model, $key);
 		$translated = $result['content'] ?? '';
@@ -538,7 +542,6 @@ JS;
 			return $logs;
 		}
 		
-		if ($simulate) { $logs[] = "  • Would translate post_content → {$to} (len " . strlen($translated) . ")"; return $logs; }
 		if ($overwrite) { wp_update_post(['ID'=>$post->ID,'post_content'=>$translated]); $logs[] = "  • Updated post_content (len: " . strlen($translated) . ")"; }
 		else { update_post_meta($post->ID, $meta_key, $translated); $logs[] = "  • Saved translation in meta {$meta_key}."; }
 		return $logs;
@@ -631,6 +634,11 @@ JS;
 			return; 
 		}
 
+		if ($simulate) { 
+			$logs[] = "  • Would translate {$path_str} → {$to} (len " . strlen($value) . ")"; 
+			return; 
+		}
+
 		// Translate the content
 		$result = $this->ask_openai($value, $to, $from, $type === 'wysiwyg', $model, $key);
 		$translated = $result['content'] ?? '';
@@ -647,11 +655,6 @@ JS;
 		if (!is_string($translated) || trim($translated) === '') {
 			$logs[] = "  • ⚠️ Skipped {$path_str} - translation returned empty (original len: " . strlen($value) . ")";
 			return;
-		}
-		
-		if ($simulate) { 
-			$logs[] = "  • Would translate {$path_str} → {$to} (len " . strlen($translated) . ")"; 
-			return; 
 		}
 
 		// Save translation
